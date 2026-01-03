@@ -111,7 +111,7 @@ export default function DashboardPage() {
       <Stack spacing={3}>
        
         <Box>
-          <Typography variant="h5" fontWeight={800}>
+          <Typography variant="h6" color="#0c270dff" fontWeight={800}>
             Dashboard
           </Typography>
           <Typography fontSize={13} color="text.secondary">
@@ -120,7 +120,7 @@ export default function DashboardPage() {
         </Box>
 
       
-        <Grid container spacing={2}>
+        <Grid container spacing={15}>
           {(loading ? Array.from(new Array(4)) : stats).map((stat, i) => (
             <Grid item xs={6} md={3} key={i}>
               <Card

@@ -1,5 +1,5 @@
 {
-  "name": "wortk-pulse",
+  "name": "work-pulse",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -26,12 +26,16 @@
     "axios": "^1.13.2",
     "chart.js": "^4.5.1",
     "dayjs": "^1.11.19",
+    "file-saver": "^2.0.5",
     "framer-motion": "^12.23.26",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
     "react": "^19.2.0",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.10.1",
-    "recharts": "^3.6.0"
+    "recharts": "^3.6.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
