@@ -18,6 +18,7 @@ import Team from "./Components/Master/Team";
 import Customer from "./Components/Master/Customer";
 import TimeSheet from "./Components/Timesheet/TimeSheet";
 import ChatPage from "./Components/Chat/ChatPage";
+import CalendarPage from "./Components/Calendar/CalendarPage";
 
 function App() {
   return (
@@ -29,7 +30,7 @@ function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="create-use" element={<CreateUser />} />
             <Route path="chat" element={<ChatPage/>} />
-            <Route path="calendar" element={<h1>Calendar Coming Soon</h1>} />
+            <Route path="calendar" element={<CalendarPage/>}/>
             <Route path="tasks" element={<TasksPage />} />
             <Route path="tasks/create" element={<CreateTask />} />
             <Route path="setting" element={<SettingPage />} />

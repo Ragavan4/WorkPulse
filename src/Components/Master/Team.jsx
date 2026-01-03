@@ -121,8 +121,8 @@ export default function Team() {
           borderRadius: 3,
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
-          background: "linear-gradient(90deg, #a0ca8d96, #ececec31)",
+          alignItems: "center", background: "linear-gradient(90deg, #a0ca8d96, #ececec31)",
+         
         }}
       >
         <Typography variant="h6" fontWeight={600}>

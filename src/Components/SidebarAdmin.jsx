@@ -20,7 +20,8 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
-import ScheduleIcon from '@mui/icons-material/Schedule';
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import TodayIcon from "@mui/icons-material/CalendarToday";
 
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -33,6 +34,7 @@ export default function SidebarAdmin() {
 
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/admin/dashboard" },
+    { text: "Calendar", icon: <TodayIcon />, path: "/admin/calendar" },
     { text: "Time Sheet", icon: <ScheduleIcon />, path: "/admin/timesheet" },
     { text: "Create User", icon: <PersonIcon />, path: "/admin/create-use" },
     { text: "Chat", icon: <ChatIcon />, path: "/admin/chat" },
@@ -68,7 +70,7 @@ export default function SidebarAdmin() {
         },
       }}
     >
-      <List sx={{ pt: 8,width: "100%" }}>
+      <List sx={{ pt: 8, width: "100%" }}>
         {menuItems.map((item) => {
           const active = location.pathname.startsWith(item.path);
 
@@ -100,7 +102,6 @@ export default function SidebarAdmin() {
                 </ListItemButton>
               </Tooltip>
 
-              
               {item.children && hovered === item.text && (
                 <Box
                   sx={{

@@ -43,12 +43,20 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import axios from "../../api/axios";
 import { motion, AnimatePresence } from "framer-motion";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import weekOfYear from "dayjs/plugin/weekOfYear";
+dayjs.extend(weekOfYear);
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const TimeSheet = () => {
   const user = JSON.parse(localStorage.getItem("user"));
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isSm = useMediaQuery(theme.breakpoints.down("sm"));
+  const [editingTimesheetId, setEditingTimesheetId] = useState(null);
 
   const [taskList, setTaskList] = useState([]);
   const [projectList, setProjectList] = useState([]);
@@ -65,7 +73,6 @@ const TimeSheet = () => {
   });
   const [hoveredRow, setHoveredRow] = useState(null);
 
- 
   useEffect(() => {
     fetchTasks();
     fetchProjects();
@@ -101,7 +108,6 @@ const TimeSheet = () => {
     }
   }, []);
 
- 
   const handleTaskChange = useCallback(
     (e) => {
       const taskId = e.target.value;
@@ -114,6 +120,90 @@ const TimeSheet = () => {
     },
     [taskList]
   );
+
+  const downloadPDF = () => {
+    if (!filteredTimesheets.length) return;
+
+    const user = JSON.parse(localStorage.getItem("user")) || {};
+
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Timesheet Report", 14, 15);
+
+    doc.setFontSize(10);
+    doc.text(`Name : ${user.name || "-"}`, 14, 22);
+    doc.text(`Email : ${user.email || "-"}`, 14, 27);
+    doc.text(`Period : ${filter.toUpperCase()}`, 14, 32);
+
+    const rows = filteredTimesheets.map((ts) => {
+      const task =
+        taskList.find((t) => t.taskId === ts.taskId)?.taskDescription || "-";
+      const project =
+        projectList.find((p) => p.projectId === ts.projectId)?.projectName ||
+        ts.project ||
+        "-";
+
+      return [
+        task,
+        project,
+        dayjs(ts.workDate).format("DD-MM-YYYY"),
+        ts.billing,
+        ts.hoursWorked,
+        ts.remarks || "-",
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 38,
+      head: [["Task", "Project", "Date", "Type", "Hours", "Notes"]],
+      body: rows,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [19, 58, 24] },
+      margin: { left: 14, right: 14 },
+    });
+
+    doc.setFontSize(10);
+    doc.text(
+      `Total Hours : ${totalHours.toFixed(1)}h`,
+      14,
+      doc.lastAutoTable.finalY + 8
+    );
+
+    doc.save(`Timesheet_${filter}.pdf`);
+  };
+
+  const downloadExcel = () => {
+    if (!filteredTimesheets.length) return;
+
+    const reportData = buildReportData(filteredTimesheets);
+
+    const worksheet = XLSX.utils.json_to_sheet(reportData);
+
+    worksheet["!cols"] = [
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 30 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 30 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Timesheet");
+
+    const buffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    saveAs(blob, `Timesheet_${filter}.xlsx`);
+  };
 
   const handleChange = useCallback(
     (e) => {
@@ -133,10 +223,20 @@ const TimeSheet = () => {
             ?.projectName || "",
         hoursWorked: Number(timesheet.hoursWorked),
         billing: timesheet.billing,
-        workDate: timesheet.workDate.toISOString(),
+        workDate: dayjs(timesheet.workDate).format("YYYY-MM-DD"),
         remarks: timesheet.remarks,
       };
-      await axios.post("/Timesheet", payload);
+
+      if (editingTimesheetId) {
+        payload.timesheetId = editingTimesheetId;
+      }
+
+      if (editingTimesheetId) {
+        await axios.put(`/Timesheet/${editingTimesheetId}`, payload);
+      } else {
+        await axios.post("/Timesheet", payload);
+      }
+
       setTimesheet({
         taskId: "",
         projectId: "",
@@ -151,25 +251,29 @@ const TimeSheet = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [timesheet, projectList, fetchTimesheets]);
+  }, [timesheet, projectList, fetchTimesheets, editingTimesheetId]);
 
- const filteredTimesheets = useMemo(() => {
-  const today = dayjs();
+  const filteredTimesheets = useMemo(() => {
+    if (!timesheetList.length) return [];
 
-  return timesheetList
-   
-    .filter((ts) =>
-      taskList.some((t) => t.taskId === ts.taskId)
-    )
-    
-    .filter((ts) => {
-      const tsDate = dayjs(ts.workDate);
-      if (filter === "daily") return tsDate.isSame(today, "day");
-      if (filter === "weekly") return tsDate.isSame(today, "week");
-      if (filter === "monthly") return tsDate.isSame(today, "month");
-      return true;
-    });
-}, [timesheetList, taskList, filter]);
+    const today = dayjs();
+
+    return timesheetList
+      .filter((ts) =>
+        taskList.length === 0
+          ? true
+          : taskList.some((t) => t.taskId === ts.taskId)
+      )
+      .filter((ts) => {
+        const tsDate = dayjs(ts.workDate);
+
+        if (filter === "daily") return tsDate.isSame(today, "day");
+        if (filter === "weekly") return tsDate.isSame(today, "week");
+        if (filter === "monthly") return tsDate.isSame(today, "month");
+
+        return true;
+      });
+  }, [timesheetList, taskList, filter]);
 
   const totalHours = useMemo(
     () =>
@@ -228,13 +332,13 @@ const TimeSheet = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 , }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
           <Paper
             elevation={0}
             sx={{
               p: 1.5,
               borderRadius: 3,
-              bgcolor:  "#133a18ff",
+              bgcolor: "#133a18ff",
               color: "white",
               display: "flex",
               alignItems: "center",
@@ -262,7 +366,7 @@ const TimeSheet = () => {
               gap: 1,
               flexWrap: "wrap",
               justifyContent: "end",
-              ml: { xs: 0, md: 95 },
+              ml: { xs: 0, md: 86 },
               mt: { xs: 2, md: 0 },
             }}
           >
@@ -281,7 +385,7 @@ const TimeSheet = () => {
                     fontWeight: 600,
                     height: 36,
                     borderRadius: 20,
-                    bgcolor: filter === f ?  "#133a18ff": "transparent",
+                    bgcolor: filter === f ? "#133a18ff" : "transparent",
                     color: filter === f ? "white" : "text.primary",
                     "&:hover": {
                       bgcolor:
@@ -294,6 +398,14 @@ const TimeSheet = () => {
               </motion.div>
             ))}
           </Box>
+
+          <Button
+            size="15px"
+            color="#133a18ff"
+            startIcon={<FileDownloadIcon />}
+            onClick={downloadPDF}
+            disabled={!filteredTimesheets.length}
+          ></Button>
         </Box>
       </motion.div>
 
@@ -325,7 +437,7 @@ const TimeSheet = () => {
                 }}
               >
                 <Box
-                  sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                  sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}
                 >
                   <Avatar
                     sx={{
@@ -338,17 +450,23 @@ const TimeSheet = () => {
                   </Avatar>
                   <Typography
                     variant="caption"
-                    sx={{ fontWeight: 500, color: "text.secondary" }}
+                    sx={{
+                      fontWeight: 500,
+                      color: "text.secondary",
+                      justifyContent: "flex-end",
+                    }}
                   >
                     {stat.label}
                   </Typography>
-                  <Typography
-                    variant="h6"
-                    fontWeight={700}
-                    color={`${stat.color}.main`}
-                  >
-                    {stat.value}
-                  </Typography>
+                  <Box sx={{}}>
+                    <Typography
+                      variant="h6"
+                      fontWeight={700}
+                      color={`${stat.color}.main`}
+                    >
+                      {stat.value}
+                    </Typography>
+                  </Box>
                 </Box>
               </Card>
             </motion.div>
@@ -452,7 +570,7 @@ const TimeSheet = () => {
                   onChange={handleChange}
                 />
 
-                <Button
+                <Button sx={{backgroundColor:"#051d06ff"}}
                   fullWidth
                   size="small"
                   variant="contained"
@@ -460,16 +578,9 @@ const TimeSheet = () => {
                   disabled={
                     submitting || !timesheet.taskId || !timesheet.hoursWorked
                   }
-                  startIcon={
-                    submitting ? (
-                      <CircularProgress size={16} color="inherit" />
-                    ) : (
-                      <Edit />
-                    )
-                  }
-                  sx={{ textTransform: "none", fontWeight: 600 }}
+                  
                 >
-                  {submitting ? "Saving..." : "Add Time Entry"}
+                  {editingTimesheetId ? "Update Time Entry" : "Add Time Entry"}
                 </Button>
               </Grid>
             </Card>
@@ -549,6 +660,8 @@ const TimeSheet = () => {
                             ?.projectName ||
                           ts.project ||
                           "-";
+                        const isEditing = editingTimesheetId === ts.timesheetId;
+
                         return (
                           <motion.tr
                             key={ts.timesheetId}
@@ -557,6 +670,31 @@ const TimeSheet = () => {
                             transition={{ delay: index * 0.05 }}
                             whileHover={{
                               bgcolor: alpha(theme.palette.primary.main, 0.05),
+                            }}
+                            onClick={() => {
+                              const matchedProject = projectList.find(
+                                (p) => p.projectName === ts.project
+                              );
+
+                              setTimesheet({
+                                taskId: ts.taskId,
+                                projectId: matchedProject?.projectId || "",
+                                hoursWorked: ts.hoursWorked,
+                                billing: ts.billing,
+                                workDate: dayjs(ts.workDate),
+                                remarks: ts.remarks,
+                              });
+
+                              setEditingTimesheetId(ts.timesheetId);
+                            }}
+                            style={{
+                              cursor: "pointer",
+                              backgroundColor: isEditing
+                                ? alpha(theme.palette.primary.main, 0.1)
+                                : "transparent",
+                              borderLeft: isEditing
+                                ? `4px solid ${theme.palette.primary.main}`
+                                : "4px solid transparent",
                             }}
                           >
                             <TableCell
@@ -574,13 +712,7 @@ const TimeSheet = () => {
                             </TableCell>
                             <TableCell sx={{ p: 2 }}>
                               <Typography variant="body2">
-                                {dayjs(ts.workDate).format("MMM D, YYYY")}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {dayjs(ts.workDate).format("ddd")}
+                                {dayjs(ts.workDate).format("DD-MM-YYYY")}
                               </Typography>
                             </TableCell>
                             <TableCell sx={{ p: 2 }}>
