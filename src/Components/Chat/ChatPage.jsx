@@ -37,6 +37,9 @@ export default function ChatPage() {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
+  const getImageSrc = (fileUrl) =>
+    fileUrl ? `http://localhost:5259${fileUrl}` : "";
+
   useEffect(() => {
     if (!currentUser?.id) return;
     axios.get("/Register").then((res) => {
@@ -74,17 +77,36 @@ export default function ChatPage() {
       }
     );
 
-    connection.start().then(() => setConnected(true));
+    connection
+      .start()
+      .then(() => setConnected(true))
+      .catch(console.error);
+
     connectionRef.current = connection;
 
-    return () => connection.stop();
-  }, [userId, toUserId]);
+    return () => {
+      connection.stop();
+    };
+  }, [userId]);
 
   const sendMessage = useCallback(async () => {
-    if (!message.trim() || !toUserId) return;
-    await connectionRef.current.invoke("SendMessage", toUserId, message);
-    setMessage("");
-  }, [message, toUserId]);
+    if (!toUserId || !connected) return;
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) return;
+    try {
+      await connectionRef.current.invoke(
+        "SendMessage",
+        toUserId,
+        trimmedMessage,
+        null,
+        null,
+        null
+      );
+      setMessage("");
+    } catch (err) {
+      console.error("SendMessage failed:", err);
+    }
+  }, [message, toUserId, connected]);
 
   const handleFileUpload = async (file) => {
     if (!file || !toUserId) return;
@@ -103,13 +125,15 @@ export default function ChatPage() {
       await connectionRef.current.invoke(
         "SendMessage",
         toUserId,
-        "",
+        null,
         res.data.fileUrl,
         res.data.fileName,
         res.data.fileType
       );
+
+      setMessage("");
     } catch (err) {
-      console.error(err);
+      console.error("File send failed:", err);
     } finally {
       setUploading(false);
     }
@@ -128,18 +152,19 @@ export default function ChatPage() {
       <CssBaseline />
       <Box
         sx={{
-          height: "calc(100vh - 100px)",
+          margin: -2,
+          height: "calc(100vh - 70px)",
           display: "flex",
           bgcolor: "grey.50",
           overflow: "hidden",
-          borderRadius: "20px",
+          borderRadius: "0",
         }}
       >
         <Paper
           sx={{
             width: { xs: 280, sm: 320, md: 340 },
             height: "100%",
-            background: "linear-gradient(90deg, #35701669, #ececec31)",
+            background: "linear-gradient(90deg, #969ea169, #ececec31)",
             borderRight: "1px solid #eef1f6",
             boxShadow: "none",
             overflowY: "auto",
@@ -210,8 +235,7 @@ export default function ChatPage() {
             display: "flex",
             flexDirection: "column",
             minHeight: 0,
-
-            background: "linear-gradient(90deg, #f8f8f88a,  #35701669)",
+            background: "#faf7e967",
           }}
         >
           {!toUserId ? (
@@ -234,7 +258,7 @@ export default function ChatPage() {
                   py: 2,
                   maxHeight: "70px",
                   boxShadow: "none",
-                  background: "linear-gradient(90deg, #f8f8f82d,  #99d1821a)",
+                  background: "linear-gradient(90deg, #f8f8f869, #ececec31)",
                 }}
               >
                 <Stack direction="row" spacing={2} alignItems="center">
@@ -276,9 +300,10 @@ export default function ChatPage() {
               >
                 {messages.map((m, i) => {
                   const mine = m.fromUser === userId;
+                  const imageSrc = m.fileUrl ? getImageSrc(m.fileUrl) : "";
                   return (
                     <Box
-                      key={i}
+                      key={`${i}-${m.createdAt || Date.now()}`}
                       sx={{
                         display: "flex",
                         justifyContent: mine ? "flex-end" : "flex-start",
@@ -293,21 +318,54 @@ export default function ChatPage() {
                           maxWidth: "60%",
                           bgcolor: mine ? "#0e5b61ff" : "#2b9981a2",
                           color: "#fff",
+                          position: "relative",
+                          ...(m.fileUrl && {
+                            p: 0,
+                            bgcolor: "transparent",
+                            "& img, & a": {
+                              width: "100%",
+                              height: "auto",
+                              borderRadius: 12,
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                              display: "block",
+                            },
+                          }),
                         }}
                       >
                         {m.fileUrl ? (
-                          m.fileType.startsWith("image") ? (
+                          m.fileType?.startsWith("image") ? (
                             <img
-                              src={m.fileUrl}
-                              alt=""
-                              style={{ maxWidth: "100%", borderRadius: 8 }}
+                              src={imageSrc}
+                              alt={m.fileName || "Image"}
+                              style={{
+                                maxWidth: "200px",
+                                height: "60",
+                                borderRadius: 12,
+                                cursor: "pointer",
+                                objectFit: "cover",
+                              }}
+                              onClick={(e) => window.open(imageSrc, "_blank")}
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                console.error("Failed to load:", imageSrc);
+                              }}
+                              onLoad={() =>
+                                messagesEndRef.current?.scrollIntoView({
+                                  behavior: "smooth",
+                                })
+                              }
                             />
                           ) : (
                             <a
-                              href={m.fileUrl}
+                              href={imageSrc}
                               target="_blank"
                               rel="noreferrer"
-                              style={{ color: "#fff" }}
+                              style={{
+                                color: "#196c77ff",
+                                textDecoration: "none",
+                                padding: "12px 16px",
+                                display: "block",
+                              }}
                             >
                               📄 {m.fileName}
                             </a>
@@ -324,7 +382,10 @@ export default function ChatPage() {
 
               <Paper sx={{ p: 1, backgroundColor: "#ffffff0c" }}>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <IconButton onClick={() => fileInputRef.current.click()}>
+                  <IconButton
+                    onClick={() => fileInputRef.current.click()}
+                    disabled={uploading}
+                  >
                     <AttachFileIcon />
                   </IconButton>
 
@@ -333,10 +394,15 @@ export default function ChatPage() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type a message..."
-                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && !e.shiftKey && sendMessage()
+                    }
                   />
 
-                  <IconButton onClick={sendMessage}>
+                  <IconButton
+                    onClick={sendMessage}
+                    disabled={!message.trim() || !connected}
+                  >
                     <SendIcon />
                   </IconButton>
 
@@ -344,6 +410,7 @@ export default function ChatPage() {
                     ref={fileInputRef}
                     type="file"
                     hidden
+                    accept="image/*,.pdf,.doc,.docx"
                     onChange={(e) => handleFileUpload(e.target.files[0])}
                   />
                 </Stack>
