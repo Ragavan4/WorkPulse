@@ -7,14 +7,14 @@ const theme = createTheme({
         root: {
           "& .MuiOutlinedInput-root": {
             height: 30,
-            borderRadius: "10px",
+            borderRadius: "5px",
           },
           "& .MuiOutlinedInput-input": {
             padding: "10px",
           },
           "& .MuiInputLabel-root": {
             fontSize: "0.80rem",
-            top: "-7px",
+            top: "-3px",
           },
         },
       },

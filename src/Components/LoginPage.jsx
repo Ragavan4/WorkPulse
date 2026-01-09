@@ -82,21 +82,63 @@ export default function LoginPage() {
         paddingRight: { xs: 2, md: 8 },
         boxSizing: "border-box",
         overflow: "hidden",
-        background:"linear-gradient(90deg, #1f3a0dff, #80c582e3)",
+        background: "linear-gradient(90deg, #1f3a0dff, #80c582e3)",
       }}
     >
+      <Box marginBottom={30}>
+        <Typography
+          variant="h3"
+          marginBottom={2}
+          sx={{
+            mb: 1,
+            mr: 40,
+            color: "#9fc78dff",
+            fontFamily: "'Poppins', sans-serif",
+            fontWeight: 700,
+            letterSpacing: "1px",
+          }}
+        >
+          WORK PULSE
+        </Typography>
+        
+
+        <Typography
+          variant="body2"
+          mr={20}
+          sx={{
+            color: "#6f8f5fff",
+            fontFamily: "'Poppins', sans-serif",
+            letterSpacing: "0.4px",
+          }}
+        >
+          Track • Manage • Perform Better <br />
+          Workpuls is a productivity and time tracking software <br />that helps
+          organizations monitor employee performance and optimize workflows
+          through detailed analytics.
+        </Typography>
+      </Box>
+
       <Paper
-        elevation={4}
+        elevation={10}
         sx={{
-          width: 320,
+          width: 270,
+          minHeight: 300,
           padding: 4,
-          borderRadius: 3,
+          borderRadius: 1,
           margin: 0,
         }}
       >
         <Typography
           variant="h5"
-          sx={{ textAlign: "center", marginBottom: 3, color: "#161414ff" }}
+          sx={{
+            textAlign: "center",
+            marginBottom: 3,
+            color: "#161414ff",
+            fontFamily: "'Inter', sans-serif",
+
+            fontWeight: 600,
+            letterSpacing: "0.5px",
+          }}
         >
           Login
         </Typography>
@@ -139,16 +181,33 @@ export default function LoginPage() {
           size="small"
           height="25"
           sx={{
-            backgroundColor:"#133a18ff",
+            backgroundColor: "#133a18ff",
             paddingY: 1.2,
-            borderRadius: 2,
+            borderRadius: 1,
             fontWeight: 600,
-             height:30,
+            height: 30,
           }}
           onClick={handleLogin}
         >
           Login
         </Button>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            mt: 3,
+          }}
+        >
+          <img
+            src="https://freepngimg.com/save/35986-work/930x504"
+            alt="login"
+            style={{
+              width: "200px",
+              height: "auto",
+              opacity: 0.9,
+            }}
+          />
+        </Box>
 
         <Snackbar
           open={!!error}
